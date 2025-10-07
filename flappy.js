@@ -44,7 +44,7 @@ assets.bird.src = 'https://i.ibb.co/wN2kFZCn/Gemini-Generated-Image-1hn1yy1hn1yy
 assets.pipeTop.src = 'https://i.ibb.co/jvcYMCgK/Gemini-Generated-Image-1hn1yy1hn1yy1hn1-removebg-preview.png';
 assets.pipeBottom.src = 'https://i.ibb.co/jvcYMCgK/Gemini-Generated-Image-1hn1yy1hn1yy1hn1-removebg-preview.png';
 assets.backgroundSky.src = 'https://i.ibb.co/qLyW9bdP/dad.png';
-assets.backgroundCity.src = 'https://i.ibb.co/qLyW9bdP/dad.png';
+assets.backgroundCity.src = 'https://i.ibb.co/60CW0Mq8/IMG-2297.jpg';
 assets.ground.src = 'https://upload.wikimedia.org/wikipedia/commons/b/be/Ground_%28front_layer%29.png';
 
 function loadAssets() {
