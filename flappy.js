@@ -1,150 +1,181 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+// Responsive canvas (optional, comment out if you want fixed size)
+canvas.width = 400;
+canvas.height = 600;
+// Optionally, set via CSS for clarity:
+// canvas.style.width = "400px";
+// canvas.style.height = "600px";
+
 // Game Constants
-const BIRD_SIZE = 25;
+const BIRD_SIZE = 40;
 const GRAVITY = 0.4;
 const JUMP_STRENGTH = -7;
-const PIPE_WIDTH = 50;
-const PIPE_GAP = 100; // The vertical gap between the top and bottom pipes
-const PIPE_SPACING = 150; // Horizontal distance between new pipe pairs
-const GAME_SPEED = 2; // Speed at which pipes move
+const PIPE_WIDTH = 70;
+const PIPE_GAP = 150;
+const PIPE_SPACING = 220;
+const GAME_SPEED = 2;
+const GROUND_HEIGHT = 50;
+const PIPE_ORNAMENT_HEIGHT = 45;
 
 // Game Variables
 let birdY = canvas.height / 2;
 let birdVelocity = 0;
 let score = 0;
+let pipes = [];
 let isGameOver = false;
-let pipes = []; // Array to hold pipe objects
-let gameInterval;
+let isGameStarted = false;
 
-// Bird object (simple drawing)
+let lastTime = 0;
+const MAX_DELTA_TIME = 50;
+
+// --- Image Assets ---
+const assets = {
+    bird: new Image(),
+    pipeTop: new Image(),
+    pipeBottom: new Image(),
+    backgroundSky: new Image(),
+    backgroundCity: new Image(),
+    ground: new Image()
+};
+
+assets.bird.src = 'https://i.ibb.co/wN2kFZCn/Gemini-Generated-Image-1hn1yy1hn1yy1hn1-removebg-preview.png';
+assets.pipeTop.src = 'https://i.ibb.co/jvcYMCgK/Gemini-Generated-Image-1hn1yy1hn1yy1hn1-removebg-preview.png';
+assets.pipeBottom.src = 'https://i.ibb.co/jvcYMCgK/Gemini-Generated-Image-1hn1yy1hn1yy1hn1-removebg-preview.png';
+assets.backgroundSky.src = 'https://i.ibb.co/qLyW9bdP/dad.png';
+assets.backgroundCity.src = 'https://i.ibb.co/qLyW9bdP/dad.png';
+assets.ground.src = 'https://i.ibb.co/1fqQQRGb/ada-removebg-preview.png';
+
+function loadAssets() {
+    let assetsLoaded = 0;
+    const totalAssets = Object.keys(assets).length;
+    return new Promise(resolve => {
+        for (const key in assets) {
+            assets[key].onload = () => {
+                if (++assetsLoaded === totalAssets) resolve();
+            };
+            assets[key].onerror = () => {
+                // Fallback: fill with a colored rectangle if image fails
+                assets[key] = null;
+                if (++assetsLoaded === totalAssets) resolve();
+            };
+        }
+    });
+}
+
+// --- Drawing Functions ---
+
 function drawBird() {
-    ctx.fillStyle = "yellow";
-    ctx.beginPath();
-    ctx.arc(60, birdY, BIRD_SIZE / 2, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Simple eye
-    ctx.fillStyle = "black";
-    ctx.beginPath();
-    ctx.arc(65, birdY - 5, 2, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.save();
+    // Clamp angle for smoother animation
+    const angle = Math.max(-Math.PI / 5, Math.min(Math.PI / 5, birdVelocity / 10));
+    ctx.translate(60, birdY);
+    ctx.rotate(angle);
+    if (assets.bird) {
+        ctx.drawImage(assets.bird, -BIRD_SIZE / 2, -BIRD_SIZE / 2, BIRD_SIZE, BIRD_SIZE);
+    } else {
+        ctx.fillStyle = "yellow";
+        ctx.beginPath();
+        ctx.arc(0, 0, BIRD_SIZE / 2, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    ctx.restore();
 }
 
-// Pipe object
 function drawPipe(pipe) {
-    ctx.fillStyle = "green";
-    
-    // Top pipe
-    ctx.fillRect(pipe.x, 0, PIPE_WIDTH, pipe.topHeight);
+    // Top Pipe
+    const topPipeHeight = pipe.topHeight;
+    const topMiddleHeight = topPipeHeight - PIPE_ORNAMENT_HEIGHT;
+    if (assets.pipeTop) {
+        if (topMiddleHeight > 0 && assets.pipeTop.height > PIPE_ORNAMENT_HEIGHT * 2) {
+            ctx.drawImage(
+                assets.pipeTop,
+                0, PIPE_ORNAMENT_HEIGHT,
+                assets.pipeTop.width, assets.pipeTop.height - (PIPE_ORNAMENT_HEIGHT * 2),
+                pipe.x, PIPE_ORNAMENT_HEIGHT,
+                PIPE_WIDTH, topMiddleHeight
+            );
+        }
+        ctx.drawImage(
+            assets.pipeTop,
+            0, 0,
+            assets.pipeTop.width, PIPE_ORNAMENT_HEIGHT,
+            pipe.x, 0,
+            PIPE_WIDTH, PIPE_ORNAMENT_HEIGHT
+        );
+    } else {
+        ctx.fillStyle = "green";
+        ctx.fillRect(pipe.x, 0, PIPE_WIDTH, topPipeHeight);
+    }
 
-    // Bottom pipe
-    ctx.fillRect(pipe.x, pipe.topHeight + PIPE_GAP, PIPE_WIDTH, canvas.height - (pipe.topHeight + PIPE_GAP));
+    // Bottom Pipe
+    const bottomPipeY = pipe.topHeight + PIPE_GAP;
+    const bottomPipeHeight = canvas.height - bottomPipeY - GROUND_HEIGHT;
+    const bottomMiddleHeight = bottomPipeHeight - PIPE_ORNAMENT_HEIGHT;
+    if (assets.pipeBottom) {
+        if (bottomMiddleHeight > 0 && assets.pipeBottom.height > PIPE_ORNAMENT_HEIGHT * 2) {
+            ctx.drawImage(
+                assets.pipeBottom,
+                0, PIPE_ORNAMENT_HEIGHT,
+                assets.pipeBottom.width, assets.pipeBottom.height - (PIPE_ORNAMENT_HEIGHT * 2),
+                pipe.x, bottomPipeY + PIPE_ORNAMENT_HEIGHT,
+                PIPE_WIDTH, bottomMiddleHeight
+            );
+        }
+        ctx.drawImage(
+            assets.pipeBottom,
+            0, assets.pipeBottom.height - PIPE_ORNAMENT_HEIGHT,
+            assets.pipeBottom.width, PIPE_ORNAMENT_HEIGHT,
+            pipe.x, bottomPipeY + bottomMiddleHeight,
+            PIPE_WIDTH, PIPE_ORNAMENT_HEIGHT
+        );
+    } else {
+        ctx.fillStyle = "green";
+        ctx.fillRect(pipe.x, bottomPipeY, PIPE_WIDTH, bottomPipeHeight);
+    }
 }
 
-// Update game state (called in the main loop)
-function updateGame() {
-    if (isGameOver) {
-        return;
+let bgX = 0;
+let groundX = 0;
+
+function drawBackground() {
+    if (assets.backgroundSky) {
+        ctx.drawImage(assets.backgroundSky, bgX, 0, canvas.width, canvas.height);
+        ctx.drawImage(assets.backgroundSky, bgX + canvas.width, 0, canvas.width, canvas.height);
+    } else {
+        ctx.fillStyle = "#87ceeb";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-
-    // Apply gravity to the bird
-    birdVelocity += GRAVITY;
-    birdY += birdVelocity;
-
-    // Boundary check (hitting the ground or ceiling)
-    if (birdY > canvas.height - BIRD_SIZE / 2 || birdY < BIRD_SIZE / 2) {
-        gameOver();
-        return;
-    }
-
-    // Move and draw pipes
-    for (let i = 0; i < pipes.length; i++) {
-        let pipe = pipes[i];
-        pipe.x -= GAME_SPEED;
-        
-        // Draw the pipe
-        drawPipe(pipe);
-
-        // Collision detection
-        if (
-            // Bird is horizontally aligned with the pipe
-            60 + BIRD_SIZE / 2 > pipe.x && 
-            60 - BIRD_SIZE / 2 < pipe.x + PIPE_WIDTH && 
-            
-            // Bird hits the top or bottom of the pipe gap
-            (birdY - BIRD_SIZE / 2 < pipe.topHeight || 
-             birdY + BIRD_SIZE / 2 > pipe.topHeight + PIPE_GAP)
-        ) {
-            gameOver();
-            return;
-        }
-
-        // Score update (passed the pipe)
-        if (pipe.x + PIPE_WIDTH < 60 && !pipe.passed) {
-            score++;
-            pipe.passed = true;
-        }
-    }
-    
-    // Remove pipes that move off-screen
-    if (pipes.length > 0 && pipes[0].x < -PIPE_WIDTH) {
-        pipes.shift();
-    }
-    
-    // Add new pipes
-    if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - PIPE_SPACING) {
-        createPipe();
-    }
-
-    // Draw all elements
-    draw();
 }
 
-// Game loop (main rendering function)
-function draw() {
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+function drawGround() {
+    const groundY = canvas.height - GROUND_HEIGHT;
+    if (assets.ground) {
+        ctx.drawImage(assets.ground, groundX, groundY, canvas.width, GROUND_HEIGHT);
+        ctx.drawImage(assets.ground, groundX + canvas.width, groundY, canvas.width, GROUND_HEIGHT);
+    } else {
+        ctx.fillStyle = "#654321";
+        ctx.fillRect(0, groundY, canvas.width, GROUND_HEIGHT);
+    }
+}
 
-    // Draw background (can be handled by CSS, but good for game logic)
-    ctx.fillStyle = "#70c5ce";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Redraw all pipes
-    pipes.forEach(drawPipe);
-
-    // Draw the bird
-    drawBird();
-
-    // Draw the ground/foreground
-    ctx.fillStyle = "#ded895";
-    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-
-    // Draw score
+function drawScore() {
     ctx.fillStyle = "white";
-    ctx.font = "24px Arial";
-    ctx.fillText("Score: " + score, 10, 30);
-    
-    // Game Over Message
-    if (isGameOver) {
-        ctx.fillStyle = "red";
-        ctx.font = "30px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText("GAME OVER!", canvas.width / 2, canvas.height / 2 - 20);
-        ctx.font = "16px Arial";
-        ctx.fillText("Press SPACE to Restart", canvas.width / 2, canvas.height / 2 + 10);
-    }
+    ctx.font = "bold 30px 'Comic Sans MS', cursive, Arial";
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 5;
+    const scoreText = `Score: ${score}`;
+    ctx.strokeText(scoreText, 10, 40);
+    ctx.fillText(scoreText, 10, 40);
 }
 
-// Function to generate a new pipe pair
+// --- Pipe Management ---
 function createPipe() {
-    // Random height for the top pipe
-    // Keep it within limits so the gap doesn't go too high or too low
-    const minHeight = 50;
-    const maxHeight = canvas.height - PIPE_GAP - 50;
+    const minHeight = PIPE_ORNAMENT_HEIGHT + 20;
+    const maxHeight = canvas.height - PIPE_GAP - GROUND_HEIGHT - PIPE_ORNAMENT_HEIGHT - 20;
+    if (maxHeight < minHeight) return;
     const randomHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
-
     pipes.push({
         x: canvas.width,
         topHeight: randomHeight,
@@ -152,38 +183,168 @@ function createPipe() {
     });
 }
 
-// Handles the bird jump
-function jump(event) {
-    // Check for Spacebar (keyCode 32)
-    if (event.keyCode === 32) {
-        if (isGameOver) {
-            resetGame();
+// --- Core Game Logic ---
+function updateGame(deltaTime) {
+    const timeFactor = deltaTime / 16.67;
+
+    if (isGameOver) {
+        if (birdY < canvas.height - BIRD_SIZE / 2 - GROUND_HEIGHT) {
+            birdVelocity += GRAVITY * timeFactor;
+            birdY += birdVelocity * timeFactor;
         } else {
-            birdVelocity = JUMP_STRENGTH;
+            birdY = canvas.height - BIRD_SIZE / 2 - GROUND_HEIGHT;
+            birdVelocity = 0;
         }
+        return;
+    }
+
+    if (!isGameStarted) return;
+
+    bgX -= GAME_SPEED * 0.2 * timeFactor;
+    if (bgX <= -canvas.width) bgX = 0;
+
+    groundX -= GAME_SPEED * 1.5 * timeFactor;
+    if (groundX <= -canvas.width) groundX = 0;
+
+    birdVelocity += GRAVITY * timeFactor;
+    birdY += birdVelocity * timeFactor;
+
+    if (birdY + BIRD_SIZE / 2 > canvas.height - GROUND_HEIGHT) {
+        birdY = canvas.height - GROUND_HEIGHT - BIRD_SIZE / 2;
+        gameOver();
+        return;
+    }
+    if (birdY < BIRD_SIZE / 2) {
+        birdY = BIRD_SIZE / 2;
+        birdVelocity = 0;
+    }
+
+    pipes.forEach(pipe => {
+        pipe.x -= GAME_SPEED * timeFactor;
+    });
+
+    const birdX = 60;
+    const birdRadius = BIRD_SIZE / 2 * 0.8;
+    for (let pipe of pipes) {
+        if (
+            birdX + birdRadius > pipe.x &&
+            birdX - birdRadius < pipe.x + PIPE_WIDTH
+        ) {
+            if (
+                birdY - birdRadius < pipe.topHeight ||
+                birdY + birdRadius > pipe.topHeight + PIPE_GAP
+            ) {
+                gameOver();
+                return;
+            }
+        }
+        if (pipe.x + PIPE_WIDTH < birdX - birdRadius && !pipe.passed) {
+            score++;
+            pipe.passed = true;
+        }
+    }
+
+    if (pipes.length > 0 && pipes[0].x < -PIPE_WIDTH) {
+        pipes.shift();
+    }
+    if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - PIPE_SPACING) {
+        createPipe();
     }
 }
 
-// Handles game over state
-function gameOver() {
-    isGameOver = true;
-    clearInterval(gameInterval);
+// --- Main Loop and State Management ---
+function gameLoop(currentTime) {
+    if (lastTime === 0) lastTime = currentTime;
+    const deltaTime = Math.min(currentTime - lastTime, MAX_DELTA_TIME);
+    lastTime = currentTime;
+
+    updateGame(deltaTime);
+    draw();
+
+    requestAnimationFrame(gameLoop);
 }
 
-// Resets the game state
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBackground();
+    pipes.forEach(drawPipe);
+    drawGround();
+    drawBird();
+    drawScore();
+
+    if (!isGameStarted && !isGameOver) {
+        ctx.textAlign = "center";
+        ctx.font = "bold 24px 'Comic Sans MS', cursive, Arial";
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 4;
+        ctx.strokeText("Click or Press SPACE to Start", canvas.width / 2, canvas.height / 2);
+        ctx.fillStyle = "white";
+        ctx.fillText("Click or Press SPACE to Start", canvas.width / 2, canvas.height / 2);
+        ctx.textAlign = "left";
+    }
+
+    if (isGameOver) {
+        ctx.textAlign = "center";
+        ctx.font = "bold 40px 'Comic Sans MS', cursive, Arial";
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 6;
+        ctx.strokeText("GAME OVER!", canvas.width / 2, canvas.height / 2 - 40);
+        ctx.fillStyle = "red";
+        ctx.fillText("GAME OVER!", canvas.width / 2, canvas.height / 2 - 40);
+
+        ctx.font = "20px 'Comic Sans MS', cursive, Arial";
+        ctx.strokeText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2);
+        ctx.fillStyle = "white";
+        ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2);
+
+        ctx.font = "18px 'Comic Sans MS', cursive, Arial";
+        ctx.strokeText("Click to Restart", canvas.width / 2, canvas.height / 2 + 40);
+        ctx.fillStyle = "white";
+        ctx.fillText("Click to Restart", canvas.width / 2, canvas.height / 2 + 40);
+
+        ctx.textAlign = "left";
+    }
+}
+
+function gameOver() {
+    isGameOver = true;
+}
+
 function resetGame() {
     birdY = canvas.height / 2;
     birdVelocity = 0;
     score = 0;
     pipes = [];
     isGameOver = false;
-    
-    // Re-start the game loop
-    gameInterval = setInterval(updateGame, 1000 / 60); // 60 FPS
+    isGameStarted = false;
+    bgX = 0;
+    groundX = 0;
 }
 
-// Event listener for jumping and restarting
-document.addEventListener("keydown", jump);
+function handleInput() {
+    if (isGameOver) {
+        resetGame();
+        return;
+    }
+    if (!isGameStarted) {
+        isGameStarted = true;
+    }
+    birdVelocity = JUMP_STRENGTH;
+}
 
-// Start the game for the first time
-resetGame();
+document.addEventListener("keydown", (event) => {
+    if (event.code === "Space") {
+        handleInput();
+    }
+});
+
+document.addEventListener("click", handleInput);
+document.addEventListener("touchstart", (e) => {
+    if (e.cancelable) e.preventDefault();
+    handleInput();
+}, { passive: false });
+
+loadAssets().then(() => {
+    lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
+});
