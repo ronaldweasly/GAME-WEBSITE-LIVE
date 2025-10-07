@@ -1,0 +1,17 @@
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #38c7ff; /* A simple sky color */
+    font-family: sans-serif;
+}
+
+#gameCanvas {
+    /* Optional: Add a border to the game area */
+    border: 3px solid #000; 
+    display: block;
+    background-color: #70c5ce; /* Canvas background */
+}
