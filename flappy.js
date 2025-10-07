@@ -43,7 +43,7 @@ const assets = {
 assets.bird.src = 'https://i.ibb.co/wN2kFZCn/Gemini-Generated-Image-1hn1yy1hn1yy1hn1-removebg-preview.png';
 assets.pipeTop.src = 'https://i.ibb.co/jvcYMCgK/Gemini-Generated-Image-1hn1yy1hn1yy1hn1-removebg-preview.png';
 assets.pipeBottom.src = 'https://i.ibb.co/jvcYMCgK/Gemini-Generated-Image-1hn1yy1hn1yy1hn1-removebg-preview.png';
-assets.backgroundSky.src = 'https://i.ibb.co/qLyW9bdP/dad.png';
+assets.backgroundSky.src = 'https://i.ibb.co/60CW0Mq8/IMG-2297.jpg';
 assets.backgroundCity.src = 'https://i.ibb.co/60CW0Mq8/IMG-2297.jpg';
 assets.ground.src = 'https://upload.wikimedia.org/wikipedia/commons/b/be/Ground_%28front_layer%29.png';
 
@@ -147,6 +147,17 @@ function drawBackground() {
         ctx.fillStyle = "#87ceeb";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+
+    // --- Add custom background text ---
+    ctx.save();
+    ctx.globalAlpha = 0.15; // Make the text subtle
+    ctx.fillStyle = "#ff0000"; // Bright red
+    ctx.font = "bold 60px Arial";
+    ctx.textAlign = "center";
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(-Math.PI / 12);
+    ctx.fillText("rishu randwaA", 0, 0);
+    ctx.restore();
 }
 
 function drawGround() {
