@@ -45,7 +45,7 @@ assets.pipeTop.src = 'https://i.ibb.co/jvcYMCgK/Gemini-Generated-Image-1hn1yy1hn
 assets.pipeBottom.src = 'https://i.ibb.co/jvcYMCgK/Gemini-Generated-Image-1hn1yy1hn1yy1hn1-removebg-preview.png';
 assets.backgroundSky.src = 'https://i.ibb.co/qLyW9bdP/dad.png';
 assets.backgroundCity.src = 'https://i.ibb.co/qLyW9bdP/dad.png';
-assets.ground.src = 'https://i.ibb.co/1fqQQRGb/ada-removebg-preview.png';
+assets.ground.src = 'https://upload.wikimedia.org/wikipedia/commons/b/be/Ground_%28front_layer%29.png';
 
 function loadAssets() {
     let assetsLoaded = 0;
